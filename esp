@@ -1,32 +1,49 @@
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local lpr = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- Fungsi utama ESP
 local function ApplyESP(plr)
     local highlight = Instance.new("Highlight")
     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
     highlight.FillTransparency = 0.5
+    
     local nameTag = Drawing.new("Text")
     local toolTag = Drawing.new("Text")
     local healthTag = Drawing.new("Text")
 
     local conn
     conn = RunService.RenderStepped:Connect(function()
+        -- Mengambil settings dari getgenv (yang dikirim dari UI)
+        local Settings = getgenv().VisualSettings
+        if not Settings then return end -- Guard jika UI belum siap
+
         if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr ~= lpr then
             local char, hum = plr.Character, plr.Character:FindFirstChild("Humanoid")
             local head = char:FindFirstChild("Head")
             local _, onScreen = camera:WorldToViewportPoint(char.HumanoidRootPart.Position)
 
-            highlight.Adornee = char; highlight.Parent = char
-            highlight.FillColor = VisualSettings.Color; highlight.Enabled = VisualSettings.Highlights
+            -- Box Highlights
+            highlight.Adornee = char
+            highlight.Parent = char
+            highlight.FillColor = Settings.Color
+            highlight.Enabled = Settings.Highlights
 
             if onScreen and head then
                 local headPos = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.7, 0))
                 
-                nameTag.Visible = VisualSettings.Names
+                -- Name Tag
+                nameTag.Visible = Settings.Names
                 if nameTag.Visible then
                     nameTag.Text = plr.DisplayName
                     nameTag.Position = Vector2.new(headPos.X, headPos.Y - 20)
                     nameTag.Size = 13; nameTag.Center = true; nameTag.Outline = true; nameTag.Color = Color3.new(1,1,1)
                 end
 
-                healthTag.Visible = VisualSettings.HealthPercent
+                -- Health Tag
+                healthTag.Visible = Settings.HealthPercent
                 if healthTag.Visible and hum then
                     local hp = math.floor(hum.Health)
                     healthTag.Text = "[" .. hp .. "%]"
@@ -35,7 +52,8 @@ local function ApplyESP(plr)
                     healthTag.Color = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), hp/hum.MaxHealth)
                 end
 
-                toolTag.Visible = VisualSettings.Tools
+                -- Tool Tag
+                toolTag.Visible = Settings.Tools
                 if toolTag.Visible then
                     local tool = char:FindFirstChildOfClass("Tool")
                     toolTag.Text = tool and "[" .. tool.Name .. "]" or "[None]"
@@ -48,14 +66,24 @@ local function ApplyESP(plr)
         else
             highlight.Enabled = false; nameTag.Visible = false; toolTag.Visible = false; healthTag.Visible = false
         end
+
+        -- Cleanup jika player keluar
         if not plr.Parent then
-            highlight:Destroy(); nameTag:Remove(); toolTag:Remove(); healthTag:Remove(); conn:Disconnect()
+            highlight:Destroy()
+            nameTag:Remove()
+            toolTag:Remove()
+            healthTag:Remove()
+            conn:Disconnect()
         end
     end)
 end
 
--- Init
-for _, p in ipairs(Players:GetPlayers()) do if p ~= lpr then ApplyESP(p) end end
-Players.PlayerAdded:Connect(ApplyESP)
-Players.PlayerAdded:Connect(function() PlayerDropdown:SetOptions(getDisplayNames()) end)
-Players.PlayerRemoving:Connect(function() PlayerDropdown:SetOptions(getDisplayNames()) end)
+-- Inisialisasi untuk player yang sudah ada
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= lpr then ApplyESP(p) end
+end
+
+-- Inisialisasi untuk player yang baru masuk
+Players.PlayerAdded:Connect(function(p)
+    if p ~= lpr then ApplyESP(p) end
+end)
